@@ -1,0 +1,599 @@
+openapi: 3.0.3
+info:
+  title: AskShield
+  version: 0.1.0
+  description: >-
+    Human-in-the-loop active learning IDS for wireless IoT. Query strategies
+    select the most informative unlabeled flows for analyst labeling so detectors
+    reach target accuracy with far fewer labels than random sampling.
+  x-product-slug: ai-iot-askshield
+  x-source: ai-in-iot/1808.01412v1/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Domains
+  - name: Pools
+  - name: Queries
+  - name: Annotations
+  - name: Models
+paths:
+  /v1/domains:
+    get:
+      operationId: listWirelessDomains
+      tags: [Domains]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Domains
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeWirelessDomain" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createWirelessDomain
+      tags: [Domains]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WirelessDomainCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeWirelessDomain" }
+  /v1/pools:
+    get:
+      operationId: listUnlabeledPools
+      tags: [Pools]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: domainId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Pools
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeUnlabeledPool" }
+    post:
+      operationId: createUnlabeledPool
+      tags: [Pools]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UnlabeledPoolCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeUnlabeledPool" }
+  /v1/pools/{poolId}/refresh:
+    post:
+      operationId: refreshUnlabeledPool
+      tags: [Pools]
+      security: [{ ApiKeyAuth: [] }]
+      parameters:
+        - name: poolId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PoolRefreshRequest" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeUnlabeledPool" }
+  /v1/queries:
+    get:
+      operationId: listQueryBatches
+      tags: [Queries]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: poolId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Queries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeQueryBatch" }
+    post:
+      operationId: createQueryBatch
+      tags: [Queries]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QueryBatchCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeQueryBatch" }
+  /v1/queries/{batchId}/items:
+    get:
+      operationId: listQueryItems
+      tags: [Queries]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Query items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeQueryItem" }
+  /v1/annotations:
+    get:
+      operationId: listAnnotations
+      tags: [Annotations]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, submitted, dual_review] }
+      responses:
+        "200":
+          description: Annotations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeAnnotation" }
+  /v1/annotations/{annotationId}:
+    get:
+      operationId: getAnnotation
+      tags: [Annotations]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: annotationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Annotation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeAnnotation" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/annotations/{annotationId}/submit:
+    post:
+      operationId: submitAnnotation
+      tags: [Annotations]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: annotationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnnotationSubmit" }
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeAnnotation" }
+  /v1/models:
+    get:
+      operationId: listDetectorModels
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: domainId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Models
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeDetectorModel" }
+    post:
+      operationId: retrainDetectorModel
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RetrainRequest" }
+      responses:
+        "202":
+          description: Retrain started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeDetectorModel" }
+  /v1/models/{modelId}/promote:
+    post:
+      operationId: promoteDetectorModel
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Promoted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeDetectorModel" }
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /v1/models/{modelId}/efficiency:
+    get:
+      operationId: getLabelEfficiencyReport
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Efficiency report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeEfficiencyReport" }
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    WirelessDomain:
+      type: object
+      required: [id, name, placementMode]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        placementMode: { type: string, enum: [centralized, hybrid, distributed] }
+        radioTypes:
+          type: array
+          items: { type: string }
+    WirelessDomainCreate:
+      type: object
+      required: [name, placementMode]
+      properties:
+        name: { type: string }
+        placementMode: { type: string, enum: [centralized, hybrid, distributed] }
+        radioTypes:
+          type: array
+          items: { type: string }
+    UnlabeledPool:
+      type: object
+      required: [id, domainId, mode]
+      properties:
+        id: { type: string }
+        domainId: { type: string }
+        mode: { type: string, enum: [pool, stream] }
+        unlabeledCount: { type: integer }
+        labeledCount: { type: integer }
+    UnlabeledPoolCreate:
+      type: object
+      required: [domainId, mode]
+      properties:
+        domainId: { type: string }
+        mode: { type: string, enum: [pool, stream] }
+        name: { type: string }
+    PoolRefreshRequest:
+      type: object
+      properties:
+        featureBatches:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    QueryBatch:
+      type: object
+      required: [id, poolId, strategy, status]
+      properties:
+        id: { type: string }
+        poolId: { type: string }
+        strategy: { type: string, enum: [uncertainty, query_by_committee, expected_gradient_length] }
+        budget: { type: integer }
+        status: { type: string, enum: [open, completed, cancelled] }
+    QueryBatchCreate:
+      type: object
+      required: [poolId, strategy, budget]
+      properties:
+        poolId: { type: string }
+        strategy: { type: string, enum: [uncertainty, query_by_committee, expected_gradient_length] }
+        budget: { type: integer, minimum: 1 }
+    QueryItem:
+      type: object
+      required: [id, batchId, rationale]
+      properties:
+        id: { type: string }
+        batchId: { type: string }
+        uncertaintyScore: { type: number }
+        rationale: { type: string }
+        minimizedFeatures:
+          type: object
+          additionalProperties: true
+    Annotation:
+      type: object
+      required: [id, queryItemId, status]
+      properties:
+        id: { type: string }
+        queryItemId: { type: string }
+        status: { type: string, enum: [pending, submitted, dual_review] }
+        label: { type: string }
+        annotatorId: { type: string }
+        requiresDualReview: { type: boolean }
+    AnnotationSubmit:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string }
+        notes: { type: string }
+        discard: { type: boolean, default: false }
+    DetectorModel:
+      type: object
+      required: [id, domainId, status]
+      properties:
+        id: { type: string }
+        domainId: { type: string }
+        status: { type: string, enum: [training, ready, promoted, rolled_back] }
+        labelCount: { type: integer }
+        f1: { type: number }
+        precision: { type: number }
+        recall: { type: number }
+        queryStrategy: { type: string }
+    RetrainRequest:
+      type: object
+      required: [domainId, poolId]
+      properties:
+        domainId: { type: string }
+        poolId: { type: string }
+        compareRandomBaseline: { type: boolean, default: true }
+    EfficiencyReport:
+      type: object
+      required: [modelId]
+      properties:
+        modelId: { type: string }
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              labelsUsed: { type: integer }
+              f1: { type: number }
+              randomBaselineF1: { type: number }
+
+    DataEnvelopeWirelessDomain:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/WirelessDomain" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeWirelessDomain:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/WirelessDomain" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeUnlabeledPool:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/UnlabeledPool" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeUnlabeledPool:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/UnlabeledPool" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeQueryBatch:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/QueryBatch" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeQueryBatch:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/QueryBatch" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeQueryItem:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/QueryItem" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeQueryItem:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/QueryItem" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeAnnotation:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Annotation" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeAnnotation:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Annotation" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeDetectorModel:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/DetectorModel" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeDetectorModel:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/DetectorModel" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeEfficiencyReport:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/EfficiencyReport" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeEfficiencyReport:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/EfficiencyReport" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
